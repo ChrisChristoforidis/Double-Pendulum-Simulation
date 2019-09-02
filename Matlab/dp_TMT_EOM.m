@@ -25,6 +25,7 @@ acc=simplify(T*ddq+G);
 
 I1=(m1*(L1^2))/12;
 I2=(m2*(L2^2))/12;
+
 M=diag([m1;m1;I1;m2;m2;I2;0;0]);
 
 % -1 for gravity along negative y and 1 for gravity along positive x:
