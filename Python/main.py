@@ -12,100 +12,103 @@ import sys
 from PyQt5 import QtWidgets
 
 
-global p1
-p1 = Pendulum(1, 1, 1, 1, 0.5, 0.5)
-p1.initSim(np.array([[pi/2], [pi/2], [0], [0]]))
-p1.setSDproperties(3000, 10, 100, 10)
-
-xdata, ydata = [0], [0]
-global step
-step=0
-dt = 0.005
-duration=0.3/dt
-magnitude=300
-
-def init():
-    """initialize animation"""
-    lines[0].set_data([], [])
-    lines[1].set_data([], [])
-    time_text.set_text('')
-    return lines[0], lines[1], time_text
-
-def animate(i):
-    """perform animation step"""
-#    if(step<duration):
-#        step+=1;
-#        if( step<np.floor( duration/2)):
-#            w=(magnitude*2/(duration*dt))*(dt*step)
-#        else:
-#            w=-(magnitude*2/(duration*dt))*(dt*step)+2*magnitude
-#    else:
-#        w=0
-#        step=15000
-  
-    p1.getNextState(0, dt)
-    ydata.append(p1.state[0]*180/pi)
-    xdata.append(p1.t)
-    if (len(xdata) > 10/dt):
-        xdata.pop(0)
-        ydata.pop(0)
-    lines[0].set_data(*p1.getPosition())
-    lines[1].set_data(xdata, ydata)
-    ax2.set_xlim([xdata[0], p1.t])
-    ax2.set_ylim([min(ydata), max(ydata)])
-    time_text.set_text('time = %.1f' % p1.t)
-    return lines[0], lines[1], time_text
 
 
-fig = Figure()
-ax = fig.add_subplot(121, aspect='equal', autoscale_on=False,
-                     xlim=(-2.1, 2.1), ylim=(-2.2, 2.2))
-ax2 = fig.add_subplot(122)
-ax2.set_xlabel('Time (s)')
-ax2.set_ylabel('$\phi$ (deg)')
 
-line, = ax.plot([], [], 'o-', lw=2)
-line2, = ax2.plot([], [])
-lines = [line, line2]
-time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
 
-Ui_MainWindow, QMainWindow = loadUiType('untitled.ui')
-t0 = time()
-i = 0
-animate(i)
-t1 = time()
-interval = 1000 * dt - (t1 - t0)
+Ui_MainWindow, QMainWindow = loadUiType('dpGUI.ui')
 
-class PlotCanvas(FigureCanvas):
 
-    def __init__(self, parent=None):
-        global fig
-        FigureCanvas.__init__(self, fig)
-        self.setParent(parent)
-        FigureCanvas.updateGeometry(self)
 
-class Main(QMainWindow, Ui_MainWindow):
+class DPSim(QMainWindow, Ui_MainWindow):
     def __init__(self, ):
-        super(Main, self).__init__()
+        super(DPSim, self).__init__()
+        # Setup the figure with the axes plots to be used for visualization
         self.setupUi(self)
-    def addmpl(self, fig):
-        self.canvas = FigureCanvas(fig)
-        self.ani = animation.FuncAnimation(fig, animate, frames=300,
-                              interval=interval, blit=True, init_func=init)
+        self.fig=Figure()
+        self.stiffness=100
+        ax = self.fig.add_subplot(121, aspect='equal', autoscale_on=False,
+                     xlim=(-2.1, 2.1), ylim=(-2.2, 2.2))
+        self.ax2 = self.fig.add_subplot(122)
+        self.ax2.set_xlabel('Time (s)')
+        self.ax2.set_ylabel('$\phi$ (deg)')
         
+        line1, = ax.plot([], [], 'o-', lw=2)
+        line2, = self.ax2.plot([], [])
+        self.lines = [line1, line2]
+        self.time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+        #Create the pendulum object which simulates the dynamics and gives states to be plotted.
+        self.p1 = Pendulum(20, 80, 1, 0.5, 0.5, 0.5)
+        self.p1.initSim(np.array([[0], [0], [0], [0]]))
+        self.p1.setSDproperties(3000,50,100, 10)
+        # Create the arrays that will hold the roll and time vectors
+        self.xdata, self.ydata = [0], [0]
+        self.step=15000
+        self.dt = 0.005
+        self.duration=0.3/self.dt
+        self.magnitude=300
+        self.canvas = FigureCanvas(self.fig) # create a canvas for the figure
+        
+        t0 = time()
+        self.animate(0)
+        t1 = time()
+        interval = 1000 * self.dt - (t1 - t0)
+
+        self.ani = animation.FuncAnimation(self.fig, self.animate, frames=300,
+                              interval=interval, blit=True, init_func=self.init)
+        
+        self.exitButton = QtWidgets.QPushButton('Quit')
+        self.impulseButton = QtWidgets.QPushButton('Impulse')
+        self.stiffnessEdit = QtWidgets.QLineEdit(str(self.stiffness))
+        self.btnLayout.addWidget(self.stiffnessEdit)
+        self.btnLayout.addWidget(self.exitButton)
+        self.btnLayout.addWidget(self.impulseButton)
+        self.exitButton.clicked.connect(app.exit)
+        #self.p1.setSDproperties(3000,float(self.stiffnessEdit.text()),10,10)
+        self.impulseButton.clicked.connect(self.impulseCallback)
+        self.exitButton.show()
         self.mplvl.addWidget(self.canvas)
         self.canvas.draw() 
         
-
+    def init(self):
+        """initialize animation"""
+        self.lines[0].set_data([], [])
+        self.lines[1].set_data([], [])
+        self.time_text.set_text('')
+        return self.lines[0], self.lines[1], self.time_text        
     
-    
+    def animate(self,i):
+        """perform animation step"""
+        if(self.step<self.duration):
+            self.step+=1;
+            if( self.step<np.floor( self.duration/2)):
+                w=(self.magnitude*2/(self.duration*self.dt))*(self.dt*self.step)
+            else:
+                w=-(self.magnitude*2/(self.duration*self.dt))*(self.dt*self.step)+2*self.magnitude
+        else:
+            w=0
+            self.step=15000
+      
+        self.p1.getNextState(w, self.dt)
+        self.ydata.append(self.p1.state[0]*180/pi)
+        self.xdata.append(self.p1.t)
+        if (len(self.xdata) > 10/self.dt):
+            self.xdata.pop(0)
+            self.ydata.pop(0)
+        self.lines[0].set_data(*self.p1.getPosition())
+        self.lines[1].set_data(self.xdata, self.ydata)
+        self.ax2.set_xlim([self.xdata[0], self.p1.t])
+        self.ax2.set_ylim([min(self.ydata), max(self.ydata)])
+        self.time_text.set_text('time = %.1f' % self.p1.t)
+        return self.lines[0], self.lines[1], self.time_text    
+    def impulseCallback(self):
+        self.step=0
     
 app = QtWidgets.QApplication(sys.argv)
-main = Main()       
-main.addmpl(fig)
-main.show()
-sys.exit(app.exec_())
-    
+sim = DPSim()
+
+sim.show()
+app.exec_()    
   
     
 

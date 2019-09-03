@@ -12,7 +12,7 @@ class Pendulum:
         self.b = b
         self.L1 = L1
         self.L2 = L2
-        self.Gains = np.array([0, 0, 0, 0])
+        self.Gains = np.array([[0],[ 0],[ 0], [0]])
         self.dX = self.getEOM()
         self.state = np.array([[0], [0], [0], [0]])
 
