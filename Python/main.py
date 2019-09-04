@@ -8,6 +8,7 @@ from pendulum import Pendulum
 import numpy as np
 from numpy import pi
 import matplotlib.animation as animation
+
 import sys
 from PyQt5 import QtWidgets
 
@@ -26,21 +27,27 @@ class DPSim(QMainWindow, Ui_MainWindow):
         # Setup the figure with the axes plots to be used for visualization
         self.setupUi(self)
         self.fig=Figure()
-        self.stiffness=100
-        ax = self.fig.add_subplot(121, aspect='equal', autoscale_on=False,
-                     xlim=(-2.1, 2.1), ylim=(-2.2, 2.2))
-        self.ax2 = self.fig.add_subplot(122)
+        self.k2=220
+        self.k1=1000
+        self.b1=50
+        self.b2=20
+        self.max_y=0.1
+        self.min_y=-0.1
+        ax = self.fig.add_subplot(211, aspect='equal', autoscale_on=False,
+                     xlim=(-2.1, 2.1), ylim=(-0.2, 2.2))
+        self.ax2 = self.fig.add_subplot(212)
         self.ax2.set_xlabel('Time (s)')
         self.ax2.set_ylabel('$\phi$ (deg)')
-        
+        self.ax2.grid(linestyle='-', linewidth='0.5', color='black')
         line1, = ax.plot([], [], 'o-', lw=2)
         line2, = self.ax2.plot([], [])
-        self.lines = [line1, line2]
+        line3 = self.ax2.quiver([],[],[])
+        self.lines = [line1, line2, line3]
         self.time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
         #Create the pendulum object which simulates the dynamics and gives states to be plotted.
         self.p1 = Pendulum(20, 80, 1, 0.5, 0.5, 0.5)
-        self.p1.initSim(np.array([[0], [0], [0], [0]]))
-        self.p1.setSDproperties(3000,50,100, 10)
+        self.p1.initSim(np.array([[0],[0],[0],[0]]))
+        self.p1.setSDproperties(self.k1,self.k2,self.b1, self.b2)
         # Create the arrays that will hold the roll and time vectors
         self.xdata, self.ydata = [0], [0]
         self.step=15000
@@ -58,14 +65,19 @@ class DPSim(QMainWindow, Ui_MainWindow):
                               interval=interval, blit=True, init_func=self.init)
         
         self.exitButton = QtWidgets.QPushButton('Quit')
+        self.changeButton = QtWidgets.QPushButton('Change')
         self.impulseButton = QtWidgets.QPushButton('Impulse')
-        self.stiffnessEdit = QtWidgets.QLineEdit(str(self.stiffness))
+        self.resetButton  = QtWidgets.QPushButton('Reset')
+        self.stiffnessEdit = QtWidgets.QLineEdit(str(self.k2))
         self.btnLayout.addWidget(self.stiffnessEdit)
+        self.btnLayout.addWidget(self.changeButton)
         self.btnLayout.addWidget(self.exitButton)
         self.btnLayout.addWidget(self.impulseButton)
+        self.btnLayout.addWidget(self.resetButton)
         self.exitButton.clicked.connect(app.exit)
-        #self.p1.setSDproperties(3000,float(self.stiffnessEdit.text()),10,10)
+        self.changeButton.clicked.connect(self.changeStiffnessCallback)
         self.impulseButton.clicked.connect(self.impulseCallback)
+        self.resetButton.clicked.connect(self.resetButtonCallback)
         self.exitButton.show()
         self.mplvl.addWidget(self.canvas)
         self.canvas.draw() 
@@ -79,6 +91,7 @@ class DPSim(QMainWindow, Ui_MainWindow):
     
     def animate(self,i):
         """perform animation step"""
+        #input disturbance logic
         if(self.step<self.duration):
             self.step+=1;
             if( self.step<np.floor( self.duration/2)):
@@ -88,22 +101,41 @@ class DPSim(QMainWindow, Ui_MainWindow):
         else:
             w=0
             self.step=15000
-      
-        self.p1.getNextState(w, self.dt)
+            
+        self.p1.updateState(w, self.dt)
         self.ydata.append(self.p1.state[0]*180/pi)
         self.xdata.append(self.p1.t)
-        if (len(self.xdata) > 10/self.dt):
+        if (len(self.xdata) > 20/self.dt):
             self.xdata.pop(0)
             self.ydata.pop(0)
         self.lines[0].set_data(*self.p1.getPosition())
         self.lines[1].set_data(self.xdata, self.ydata)
         self.ax2.set_xlim([self.xdata[0], self.p1.t])
-        self.ax2.set_ylim([min(self.ydata), max(self.ydata)])
-        self.time_text.set_text('time = %.1f' % self.p1.t)
+        if(self.ydata[-1]<self.min_y):
+            self.min_y=self.ydata[-1]
+        if(self.ydata[-1]>self.max_y):
+            self.max_y=self.ydata[-1]
+        self.ax2.set_ylim([self.min_y*1.2, self.max_y*1.2])
+        self.time_text.set_text('t = %.1f s' % self.p1.t)
         return self.lines[0], self.lines[1], self.time_text    
     def impulseCallback(self):
         self.step=0
-    
+    def changeStiffnessCallback(self):
+        if (self.stiffnessEdit.text()[0:3]=='k1='):
+            self.k1=float(self.stiffnessEdit.text()[3:])
+        elif (self.stiffnessEdit.text()[0:3]=='k2='):
+            self.k2=float(self.stiffnessEdit.text()[3:])
+        elif (self.stiffnessEdit.text()[0:3]=='b1='):
+            self.b1=float(self.stiffnessEdit.text()[3:])
+        elif (self.stiffnessEdit.text()[0:3]=='b2='):
+            self.b2=float(self.stiffnessEdit.text()[3:])
+        else:
+            self.stiffnessEdit.setText('Malaka!')
+        self.p1.setSDproperties(self.k1,self.k2,self.b1, self.b2)
+    def resetButtonCallback(self):
+        self.p1.initSim(np.array([[0],[0],[0],[0]]))
+        self.xdata.clear()
+        self.ydata.clear()
 app = QtWidgets.QApplication(sys.argv)
 sim = DPSim()
 

@@ -2,7 +2,7 @@ import numpy as np
 from sympy import sin
 from sympy import cos
 import sympy as sym
-
+from pprint import pprint
 
 class Pendulum:
     def __init__(self, m1, m2, L1, L2, a, b):
@@ -14,13 +14,13 @@ class Pendulum:
         self.L2 = L2
         self.Gains = np.array([[0],[ 0],[ 0], [0]])
         self.dX = self.getEOM()
-        self.state = np.array([[0], [0], [0], [0]])
+        self.state = np.array([[0],[0],[0],[0]])
 
     def setSDproperties(self, k1, k2, b1, b2):
         # Set the spring and damper properties of the lower and upper spring damper system
         # 1 denotes the properties of the spring damper connected to the ground hinge joint
         # 2 denotes the properties of the spring damper between rods.
-        self.Gains = np.array([k1, b1, k2, b2])
+        self.Gains = np.array([[k1],[ b1],[ k2], [b2]])
 
     def getEOM(self):
         # Gets the function handle to be used for numerical integration.
@@ -48,14 +48,12 @@ class Pendulum:
         G = (T*dq).jacobian(q)*dq
 
         I1 = (self.m1*(self.L1**2))/12
+        I1=0
         I2 = (self.m2*(self.L2**2))/12
-
+        I2=0
         M = sym.diag(self.m1, self.m1, I1, self.m2, self.m2, I2, 0, 0)
-        F = sym.Matrix([0, -self.m1*g, -b1*dphi1-k1*(phi1), 0, -
-                        self.m2*g, -b2*(dphi2-dphi1)-k2*(phi2-phi1), Fx, 0])
-
+        F = sym.Matrix([0, -self.m1*g, -b1*dphi1-k1*(phi1), 0, -self.m2*g, -b2*(dphi2-dphi1)-k2*(phi2-phi1), Fx, 0])
         M_bar = T.T*M*T
-
         Q_bar = T.T*(F-M*G)
         gen_acc = M_bar.inv()*Q_bar
 
@@ -71,9 +69,9 @@ class Pendulum:
         self.state = X0
         self.t = 0
 
-    def getNextState(self, w, dt):
-        k1 = self.dX(self.t, self.state, w, self.Gains).reshape((4, 1))
-        k2 = self.dX(self.t, self.state+(k1*dt)/2,
+    def updateState(self, w, dt):
+        k1 = self.dX(self.t, self.state, w, self.Gains).reshape(4,1)
+        k2 = self.dX(self.t+(dt/2), self.state+(k1*dt)/2,
                      w, self.Gains).reshape((4, 1))
         k3 = self.dX(self.t+(dt/2), self.state+(k2*dt) /
                      2, w, self.Gains).reshape((4, 1))
