@@ -38,13 +38,14 @@ class DPSim(QMainWindow, Ui_MainWindow):
         line1, = self.ax.plot([], [], 'o-', lw=2)
         line2, = self.ax2.plot([], [])
         line3, = self.ax.plot([], [])
+        self.ax.plot([-1.5,1.5],[0 ,0],color='black',linewidth='2')
         self.lines = [line1, line2, line3]
         self.time_text = self.ax.text(
             0.02, 0.90, '', transform=self.ax.transAxes)
         self.coef_text = self.ax.text(
             0.78, 0.55, '', transform=self.ax.transAxes)
         # Create the pendulum object which simulates the dynamics and gives states to be plotted.
-        self.p1 = Pendulum(20, 80, 1, 0.5, 0.5, 0.2)
+        self.p1 = Pendulum(40, 60, 1, 0.5, 0.8, 0.15)
         self.p1.initSim(np.array([[0], [0], [0], [0]]))
         self.p1.setSDproperties(self.k1, self.k2, self.b1, self.b2)
         # Create the arrays that will hold the roll and time vectors
@@ -108,7 +109,7 @@ class DPSim(QMainWindow, Ui_MainWindow):
         self.p1.updateState(w, self.dt)
         self.ydata.append(self.p1.state[0]*180/pi)
         self.xdata.append(self.p1.t)
-        if (len(self.xdata) > 20/self.dt):
+        if (len(self.xdata) > 30/self.dt):
             self.xdata.pop(0)
             self.ydata.pop(0)
         X, Y = self.p1.getPosition()
@@ -121,11 +122,11 @@ class DPSim(QMainWindow, Ui_MainWindow):
             [Y[1], Y[1], Y[1]+w/self.magnitude*0.1, Y[1]-w/self.magnitude*0.1, Y[1]])
 
         self.ax2.set_xlim([self.xdata[0], self.p1.t])
-        if(self.ydata[-1] < self.min_y):
-            self.min_y = self.ydata[-1]
-        if(self.ydata[-1] > self.max_y):
-            self.max_y = self.ydata[-1]
-        self.ax2.set_ylim([self.min_y*1.2, self.max_y*1.2])
+#        if(self.ydata[-1] < self.min_y):
+#            self.min_y = self.ydata[-1]
+#        if(self.ydata[-1] > self.max_y):
+#            self.max_y = self.ydata[-1]
+        self.ax2.set_ylim([min(self.ydata)*1.2, max(self.ydata)*1.2])
         self.time_text.set_text('t = %.1f s' % self.p1.t)
         self.coef_text.set_text('$k_1$ = '+str(self.k1)+'\n $b_1$ = '+str(
             self.b1)+'\n $k_2$ = '+str(self.k2)+'\n $b_2$ = '+str(self.b2))

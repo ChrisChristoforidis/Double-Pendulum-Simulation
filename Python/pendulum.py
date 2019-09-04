@@ -2,7 +2,6 @@ import numpy as np
 from sympy import sin
 from sympy import cos
 import sympy as sym
-from pprint import pprint
 
 class Pendulum:
     def __init__(self, m1, m2, L1, L2, a, b):
@@ -48,9 +47,7 @@ class Pendulum:
         G = (T*dq).jacobian(q)*dq
 
         I1 = (self.m1*(self.L1**2))/12
-        I1=0
         I2 = (self.m2*(self.L2**2))/12
-        I2=0
         M = sym.diag(self.m1, self.m1, I1, self.m2, self.m2, I2, 0, 0)
         F = sym.Matrix([0, -self.m1*g, -b1*dphi1-k1*(phi1), 0, -self.m2*g, -b2*(dphi2-dphi1)-k2*(phi2-phi1), Fx, 0])
         M_bar = T.T*M*T
