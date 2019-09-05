@@ -20,6 +20,5 @@ extra.k2=300;
 
 init=[0;0;0;0];
 dt=0.005;
-#'$k_1$ = '+str(self.k1)+' $b_1$ = '+str(self.b1)+' $k_2$ = '+str(self.k2)+' $b_2$ = '+str(self.b2)
 
 simulatePendulumn(dX,init,dt,L1,L2,extra);

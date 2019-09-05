@@ -22,32 +22,44 @@ class DPSim(QMainWindow, Ui_MainWindow):
         # Setup the figure with the axes plots to be used for visualization
         self.setupUi(self)
         self.fig = Figure()
-        self.k2 = 220
+        self.k2 = 100
         self.k1 = 1000
         self.b1 = 50
-        self.b2 = 20
+        self.b2 = 10
+        self.kc1=0
+        self.kc2=0
         self.max_y = 0.1
         self.min_y = -0.1
         self.ax = self.fig.add_subplot(211, aspect='equal', autoscale_on=False,
-                                       xlim=(-2.1, 2.1), ylim=(-0.2, 2.2))
+                                       xlim=(-2.1, 2.1), ylim=(-0.25, 2.2))
         self.ax2 = self.fig.add_subplot(212)
         self.ax.set_axis_off()
         self.ax2.set_xlabel('Time (s)')
         self.ax2.set_ylabel('$\phi$ (deg)')
-        self.ax2.grid(linestyle='-', linewidth='0.5', color='black')
+        major_ticks=np.arange(-30, 31, 5)
+        minor_ticks=np.arange(-30, 31, 1)
+        self.ax2.set_yticks(major_ticks)
+        self.ax2.set_yticks(minor_ticks, minor=True)
+
+        self.ax2.grid(which='minor', alpha=0.2)
+        self.ax2.grid(which='major', alpha=0.5)
         line1, = self.ax.plot([], [], 'o-', lw=2)
         line2, = self.ax2.plot([], [])
         line3, = self.ax.plot([], [])
+        self.anot = self.ax.annotate("$\phi$", xy=(0, 0), xycoords='data', xytext=(0.2, -0.15), textcoords='data',arrowprops=dict(arrowstyle="->",connectionstyle="angle3"),)
         self.ax.plot([-1.5,1.5],[0 ,0],color='black',linewidth='2')
         self.lines = [line1, line2, line3]
         self.time_text = self.ax.text(
             0.02, 0.90, '', transform=self.ax.transAxes)
         self.coef_text = self.ax.text(
             0.78, 0.55, '', transform=self.ax.transAxes)
+        self.control_text= self.ax.text(
+            0.08, 0.55, '', transform=self.ax.transAxes) 
         # Create the pendulum object which simulates the dynamics and gives states to be plotted.
-        self.p1 = Pendulum(40, 60, 1, 0.5, 0.8, 0.15)
+        self.p1 = Pendulum(20, 80, 0.8, 0.20, 0.8, 1)
         self.p1.initSim(np.array([[0], [0], [0], [0]]))
         self.p1.setSDproperties(self.k1, self.k2, self.b1, self.b2)
+        self.p1.setControl(self.kc1,self.kc2)
         # Create the arrays that will hold the roll and time vectors
         self.xdata, self.ydata = [0], [0]
         self.step = 15000
@@ -78,6 +90,8 @@ class DPSim(QMainWindow, Ui_MainWindow):
         self.changeButton.clicked.connect(self.changeStiffnessCallback)
         self.impulseButton.clicked.connect(self.impulseCallback)
         self.resetButton.clicked.connect(self.resetButtonCallback)
+        self.stiffnessEdit.returnPressed.connect(self.changeButton.click)
+
         self.exitButton.show()
         self.mplvl.addWidget(self.canvas)
         self.canvas.draw()
@@ -87,9 +101,12 @@ class DPSim(QMainWindow, Ui_MainWindow):
         self.lines[0].set_data([], [])
         self.lines[1].set_data([], [])
         self.lines[2].set_data([], [])
+        self.anot.xy=([],[])
+
         self.time_text.set_text('')
         self.coef_text.set_text('')
-        return self.lines[0], self.lines[1], self.lines[2], self.time_text, self.coef_text
+        self.control_text.set_text('')
+        return self.lines[0], self.lines[1], self.lines[2], self.time_text, self.coef_text,self.anot,self.control_text
 
     def animate(self, i):
         """perform animation step"""
@@ -109,13 +126,13 @@ class DPSim(QMainWindow, Ui_MainWindow):
         self.p1.updateState(w, self.dt)
         self.ydata.append(self.p1.state[0]*180/pi)
         self.xdata.append(self.p1.t)
-        if (len(self.xdata) > 30/self.dt):
+        if (len(self.xdata) > 60/self.dt):
             self.xdata.pop(0)
             self.ydata.pop(0)
         X, Y = self.p1.getPosition()
         self.lines[0].set_data(X, Y)
         self.lines[1].set_data(self.xdata, self.ydata)
-
+        self.anot.xy = (X[1]*0.1/np.sqrt(X[1]**2+Y[1]**2),Y[1]*0.1/np.sqrt(X[1]**2+Y[1]**2))
         self.lines[2].set_xdata([X[1], X[1]+w/self.magnitude, X[1]+w /
                                  self.magnitude*0.9, X[1]+w/self.magnitude*0.9, X[1]+w/self.magnitude])
         self.lines[2].set_ydata(
@@ -126,11 +143,14 @@ class DPSim(QMainWindow, Ui_MainWindow):
 #            self.min_y = self.ydata[-1]
 #        if(self.ydata[-1] > self.max_y):
 #            self.max_y = self.ydata[-1]
-        self.ax2.set_ylim([min(self.ydata)*1.2, max(self.ydata)*1.2])
+#        self.ax2.set_ylim([min(self.ydata)*1.2, max(self.ydata)*1.2])
+        self.ax2.set_ylim([-25, 25])
+
         self.time_text.set_text('t = %.1f s' % self.p1.t)
         self.coef_text.set_text('$k_1$ = '+str(self.k1)+'\n $b_1$ = '+str(
             self.b1)+'\n $k_2$ = '+str(self.k2)+'\n $b_2$ = '+str(self.b2))
-        return self.lines[0], self.lines[1], self.lines[2], self.time_text, self.coef_text
+        self.control_text.set_text('$K_1$ = '+str(self.kc1)+'\n$K_2$ = '+str(self.kc2))
+        return self.lines[0], self.lines[1], self.lines[2], self.time_text, self.coef_text,self.anot,self.control_text
 
     def impulseCallback(self):
         self.step = 0
@@ -144,16 +164,21 @@ class DPSim(QMainWindow, Ui_MainWindow):
             self.b1 = float(self.stiffnessEdit.text()[3:])
         elif (self.stiffnessEdit.text()[0:3] == 'b2='):
             self.b2 = float(self.stiffnessEdit.text()[3:])
+        elif (self.stiffnessEdit.text()[0:3] == 'K1='):
+            self.kc1 = float(self.stiffnessEdit.text()[3:])
+        elif (self.stiffnessEdit.text()[0:3] == 'K2='):
+            self.kc2 = float(self.stiffnessEdit.text()[3:])
         else:
             self.stiffnessEdit.setText('Malaka!')
         self.p1.setSDproperties(self.k1, self.k2, self.b1, self.b2)
+        self.p1.setControl(self.kc1, self.kc2)
 
     def resetButtonCallback(self):
         self.p1.initSim(np.array([[0], [0], [0], [0]]))
-        self.k2 = 220
-        self.k1 = 1000
-        self.b1 = 50
-        self.b2 = 20
+#        self.k2 = 220
+#        self.k1 = 1000
+#        self.b1 = 50
+#        self.b2 = 20
         self.p1.setSDproperties(self.k1, self.k2, self.b1, self.b2)
         self.xdata.clear()
         self.ydata.clear()

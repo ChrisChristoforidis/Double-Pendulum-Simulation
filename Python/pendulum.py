@@ -14,7 +14,9 @@ class Pendulum:
         self.Gains = np.array([[0],[ 0],[ 0], [0]])
         self.dX = self.getEOM()
         self.state = np.array([[0],[0],[0],[0]])
-
+        self.Control=np.array([[0],[0]])
+    def setControl(self,kc1,kc2):
+        self.Control=np.array([[kc1],[kc2]])
     def setSDproperties(self, k1, k2, b1, b2):
         # Set the spring and damper properties of the lower and upper spring damper system
         # 1 denotes the properties of the spring damper connected to the ground hinge joint
@@ -27,6 +29,7 @@ class Pendulum:
         phi1, phi2 = sym.var('phi1,phi2', real=True)
         dphi1, dphi2 = sym.var('dphi1,dphi2', real=True)
         k1, k2, b1, b2 = sym.var('k1,k2,b1,b2', real=True)
+        kc1, kc2  = sym.var('kc1,kc2', real=True)
         X1, X2, X3, X4 = sym.var('X1,X2,X3,X4', real=True)
         t = sym.var('t', real=True)
         Fx = sym.var('Fx', real=True)
@@ -50,6 +53,8 @@ class Pendulum:
         I2 = (self.m2*(self.L2**2))/12
         M = sym.diag(self.m1, self.m1, I1, self.m2, self.m2, I2, 0, 0)
         F = sym.Matrix([0, -self.m1*g, -b1*dphi1-k1*(phi1), 0, -self.m2*g, -b2*(dphi2-dphi1)-k2*(phi2-phi1), Fx, 0])
+        Fc= sym.Matrix([0,0,0,0,0,-kc1*x2-kc2*(dphi1*self.L1*cos(phi1)+dphi2*self.L2*self.b*cos(phi2)),0,0])
+        F=Fc+F
         M_bar = T.T*M*T
         Q_bar = T.T*(F-M*G)
         gen_acc = M_bar.inv()*Q_bar
@@ -58,7 +63,8 @@ class Pendulum:
         gen_acc = gen_acc.subs({phi1: X1, phi2: X2, dphi1: X3, dphi2: X4})
         dX = gen_acc.row_insert(0, sym.Matrix([X3, X4]))
         Gains = sym.Matrix([k1, b1, k2, b2])
-        f = sym.lambdify([t, X, Fx, Gains], dX)
+        Control = sym.Matrix([kc1,kc2])
+        f = sym.lambdify([t, X, Fx, Gains,Control], dX)
         return f
 
     def initSim(self, X0):
@@ -67,13 +73,13 @@ class Pendulum:
         self.t = 0
 
     def updateState(self, w, dt):
-        k1 = self.dX(self.t, self.state, w, self.Gains).reshape(4,1)
+        k1 = self.dX(self.t, self.state, w, self.Gains,self.Control).reshape(4,1)
         k2 = self.dX(self.t+(dt/2), self.state+(k1*dt)/2,
-                     w, self.Gains).reshape((4, 1))
+                     w, self.Gains,self.Control).reshape((4, 1))
         k3 = self.dX(self.t+(dt/2), self.state+(k2*dt) /
-                     2, w, self.Gains).reshape((4, 1))
+                     2, w, self.Gains,self.Control).reshape((4, 1))
         k4 = self.dX(self.t+(dt), self.state+(k3*dt),
-                     w, self.Gains).reshape((4, 1))
+                     w, self.Gains,self.Control).reshape((4, 1))
         self.state = self.state+(dt/6)*(k1+(2*k2)+(2*k3)+k4)
         self.t += dt
         return self.state
