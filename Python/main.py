@@ -22,12 +22,12 @@ class DPSim(QMainWindow, Ui_MainWindow):
         # Setup the figure with the axes plots to be used for visualization
         self.setupUi(self)
         self.fig = Figure()
-        self.k2 = 100
-        self.k1 = 1000
+        self.k2 = 120
+        self.k1 = 2000
         self.b1 = 50
         self.b2 = 10
-        self.kc1=0
-        self.kc2=0
+        self.kc1=450
+        self.kc2=220
         self.max_y = 0.1
         self.min_y = -0.1
         self.ax = self.fig.add_subplot(211, aspect='equal', autoscale_on=False,
@@ -46,10 +46,10 @@ class DPSim(QMainWindow, Ui_MainWindow):
         line1, = self.ax.plot([], [], 'o-', lw=2)
         line2, = self.ax2.plot([], [])
         line3, = self.ax.plot([], [])
-        self.anot = self.ax.annotate("$\phi$", xy=(0, 0), xycoords='data', xytext=(0.2, -0.15), textcoords='data',arrowprops=dict(arrowstyle="->",connectionstyle="angle3"),)
+        self.anot = self.ax.annotate("$ 90^o-\phi$", xy=(0, 0), xycoords='data', xytext=(0.1, -0.15), textcoords='data',arrowprops=dict(arrowstyle="->",connectionstyle="angle3"),)
         self.ax.plot([-1.5,1.5],[0 ,0],color='black',linewidth='2')
         self.lines = [line1, line2, line3]
-        self.time_text = self.ax.text(
+        self.time_text = self.ax.text(  
             0.02, 0.90, '', transform=self.ax.transAxes)
         self.coef_text = self.ax.text(
             0.78, 0.55, '', transform=self.ax.transAxes)
@@ -168,6 +168,8 @@ class DPSim(QMainWindow, Ui_MainWindow):
             self.kc1 = float(self.stiffnessEdit.text()[3:])
         elif (self.stiffnessEdit.text()[0:3] == 'K2='):
             self.kc2 = float(self.stiffnessEdit.text()[3:])
+        elif (self.stiffnessEdit.text()[0:3] == 'pf='):
+            self.magnitude = float(self.stiffnessEdit.text()[3:])
         else:
             self.stiffnessEdit.setText('Malaka!')
         self.p1.setSDproperties(self.k1, self.k2, self.b1, self.b2)
@@ -175,10 +177,10 @@ class DPSim(QMainWindow, Ui_MainWindow):
 
     def resetButtonCallback(self):
         self.p1.initSim(np.array([[0], [0], [0], [0]]))
-#        self.k2 = 220
-#        self.k1 = 1000
+#        self.k2 = 120
+#        self.k1 = 2000
 #        self.b1 = 50
-#        self.b2 = 20
+#        self.b2 = 10
         self.p1.setSDproperties(self.k1, self.k2, self.b1, self.b2)
         self.xdata.clear()
         self.ydata.clear()
